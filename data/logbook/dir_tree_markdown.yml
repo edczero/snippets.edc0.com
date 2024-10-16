@@ -1,0 +1,21 @@
+./static
+|-- _default
+|   |-- baseof.html
+|   |-- index.html
+|   |-- list.html
+|   `-- single.html
+|-- partials
+|   |-- custom_body.html
+|   |-- custom_head.html
+|   |-- custom_header_video.html
+|   |-- footer.html
+|   |-- head.html
+|   `-- header.html
+|-- shortcodes
+|   |-- contact_list.html
+|   |-- email.html
+|   |-- extlink.html
+|   |-- icon.html
+|   |-- phone.html
+|   `-- rawhtml.html
+`-- 404.html

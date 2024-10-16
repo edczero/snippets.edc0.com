@@ -1,0 +1,127 @@
+name: directory-listing
+on: [workflow_dispatch]
+
+jobs:
+  pages-directory-listing:
+    runs-on: ubuntu-24.04
+    name: Directory Listings Index
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          ref: master    #checkout different branch
+
+      - name: Generate Directory Listings
+        uses: objectstack/github-pages-object-listing@v4.1.0
+        with:
+          FOLDER: data      #directory to generate index
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: 'data'      # upload generated folder
+  
+  deploy:
+    needs: pages-directory-listing
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
+
+
+  notification-events:
+    name: "Toot & Tweet objects"
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Toot added or changed files
+        run: |
+          toot () {
+            echo "$1" "$2"
+            if [ -z "$2" ];then
+          	  curl -F "api_base_url=https://toot.io" \
+          		  -F "access_token=${{ secrets.OBJSTACK_TOOT_ACCESS_TOKEN }}"\
+          		  -F "message=$1" \
+          		  https://kubectl.linuxmail.in/mastodon/toot
+            else
+          	  curl -F "api_base_url=https://toot.io" \
+          		  -F "access_token=${{ secrets.OBJSTACK_TOOT_ACCESS_TOKEN }}"\
+          		  -F "message=$1" \
+          		  -F image=@"$2" \
+          		  https://kubectl.linuxmail.in/mastodon/toot
+            fi
+          } 
+          
+          tweet () {
+            echo "$1" "$2"
+            if [ -z "$2" ];then
+          	  curl -X "POST" "https://graph.edc0.com/twitter/tweet" \
+                -F "consumer_key=${{ secrets.CDN_TWEET_API_KEY }}" \
+                -F "consumer_secret=${{ secrets.CDN_TWEET_API_SECRET }}" \
+                -F "access_token_key=${{ secrets.CDN_TWEET_ACCESS_TOKEN }}" \
+                -F "access_token_secret=${{ secrets.CDN_TWEET_ACCESS_TOKEN_SECRET }}" \
+                -F "message=$1"
+            else
+          	  curl -X "POST" "https://graph.edc0.com/twitter/tweet" \
+                -F "consumer_key=${{ secrets.CDN_TWEET_API_KEY }}" \
+                -F "consumer_secret=${{ secrets.CDN_TWEET_API_SECRET }}" \
+                -F "access_token_key=${{ secrets.CDN_TWEET_ACCESS_TOKEN }}" \
+                -F "access_token_secret=${{ secrets.CDN_TWEET_ACCESS_TOKEN_SECRET }}" \
+                -F "message=$1" \
+                -F image=@"$2"
+            fi
+          }
+          
+          files=($(git --no-pager show --oneline --name-only --pretty='' HEAD))
+          
+          if (( ${#files[@]} <= 4 ));
+          then
+          	IFS=""
+          	for f in ${files[@]};
+          	do
+          	  file_part=$(echo "$f" | awk -F "data/" '{print $NF}')
+          	  url="https://snippets.edc0.com/$file_part"
+          	    
+          		case "$f" in
+          		*data/logbook/images* )
+          	      #tweet "${f##*/} $url" "$f"
+                  tweet "${f##*/} $url" "$f"
+          	    ;;
+          	    *data/logbook* )
+          	      #toot "${f##*/} $url"
+                  tweet "${f##*/} $url"
+          	    ;;
+          	    *data/images* )
+          	      #toot "${f##*/} $url" "$f"
+                  tweet "${f##*/} $url" "$f"
+          	    ;;
+          	    *data/* )
+          	      #toot "${f##*/} $url"
+                  tweet "${f##*/} $url"
+          	    ;;
+          		esac
+              sleep 2
+              
+          	done
+          else 
+          	echo "No modified files";
+          fi
+      - name: Backup with rclone
+        run: |
+          cat << EOF > ./rclone.conf
+          ${{ secrets.EDC0_RCLONE_CONF }}
+          EOF
+          sudo apt install -y rclone
+          rclone --config rclone.conf copy -v --check-first --size-only --max-size 1G \
+            --max-age 30d -u --no-update-modtime \
+            data/ Gdrive-IILM:/Github/snippets.edc0.com/data/

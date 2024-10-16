@@ -1,0 +1,43 @@
+name: Cleanup Repo
+on: [workflow_dispatch]
+    
+jobs:
+  cleanup-repo:
+    runs-on: ubuntu-latest
+    steps:
+        # Checkout the branch
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+        
+      - name: Cleanup repo
+        run: |
+          sudo apt install -y git-filter-repo
+          git rev-parse HEAD~3
+          git config user.email "1333217+khurshid-alam@users.noreply.github.com"
+          git config user.name "Khurshid Alam"
+          
+          root_hash=$(git rev-parse HEAD~3)
+          orphan_hash=$(echo 'Initial Commit' | git commit-tree $root_hash^{tree})
+          git rebase --onto $orphan_hash $root_hash
+          git --no-pager log
+
+          #Expire reflogs
+          git reflog expire --all --expire=now
+        
+          #Prune
+          git gc --prune=now --aggressive
+        
+          #Check what is unreachable
+          git fsck --unreachable
+        
+          #Clear archive directory permanently
+          git filter-repo --path-glob "data/images/*" --invert-paths --force
+          git filter-repo --path-glob "data/archives/*" --invert-paths --force
+
+          git remote add origin git@github.com:objectstack/staticfiles.git
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
+          git push --all --force
+          git push --tags --force
+          
