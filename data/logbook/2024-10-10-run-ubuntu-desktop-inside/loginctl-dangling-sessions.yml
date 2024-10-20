@@ -1,0 +1,12 @@
+~$ loginctl list-sessions
+SESSION  UID USER   SEAT  TTY   STATE   IDLE SINCE
+   5446 1000 ubuntu -     -     active  no   -
+   5462 1001 xrdpuser  -  -     active  no   -
+   5464 1001 xrdpuser  -  -     active  no   -
+    c10 1001 xrdpuser  -  pts/2 closing no   -
+    c11  111 gdm    seat0 tty1  active  yes  3 weeks 6 days ago
+    c12 1001 xrdpuser  -     -  closing no   -
+    c13 1001 xrdpuser  -     -  active  yes  5 days ago
+    c14 1001 xrdpuser  -     -  active  no   -
+
+8 sessions listed.
